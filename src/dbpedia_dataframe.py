@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 from SPARQLWrapper import SPARQLWrapper, JSON
 from file_paths import PROCESSED_FILES
 
@@ -29,7 +30,8 @@ LIMIT  10000
 OFFSET  """
 
 
-sparql = SPARQLWrapper("http://dbpedia.org/sparql", agent='Bjoe1839/1.0 (bjorn60@gmail.com) bot')
+user_agent = os.getenv("WIKIDATA_USER_AGENT", "CitiesBot/1.0 (https://github.com/yourusername/anki-cities)")
+sparql = SPARQLWrapper("https://query.wikidata.org/sparql", agent=user_agent)
 
 def create_dbpedia_dataframe():
 	database = []

@@ -4,6 +4,7 @@ from urllib.parse import unquote
 import urllib.request
 import time
 import re
+import os
 from file_paths import INPUT_FILES, PROCESSED_FILES, OUTPUT_FILES
 
 # ALL: 66 mins
@@ -357,7 +358,8 @@ SELECT ?entity ?entityLabel WHERE {
 """
 
 
-sparql = SPARQLWrapper("https://query.wikidata.org/sparql", agent='Bjoe1839/1.0 (bjorn60@gmail.com) bot')
+user_agent = os.getenv("WIKIDATA_USER_AGENT", "CitiesBot/1.0 (https://github.com/yourusername/anki-cities)")
+sparql = SPARQLWrapper("https://query.wikidata.org/sparql", agent=user_agent)
 sparql.setMethod('POST')
 sparql.setTimeout(600000)
 sparql.addExtraURITag("timeout", "600000")

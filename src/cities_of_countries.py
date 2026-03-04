@@ -16,7 +16,8 @@ from urllib.parse import quote
 
 TEST_ID = ""
 
-headers = {'User-Agent': 'Bjoe1839/1.0 (bjorn60@gmail.com) bot', 'Accept-Encoding': 'gzip'}
+user_agent = os.getenv('WIKIDATA_USER_AGENT', 'CitiesBot/1.0 (https://github.com/yourusername/anki-cities)')
+headers = {'User-Agent': user_agent, 'Accept-Encoding': 'gzip'}
 session = requests.Session()
 session.headers.update(headers)
 N_QUERY = 50

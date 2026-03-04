@@ -9,6 +9,6 @@ from src.file_paths import PROCESSED_FILES
 with open(PROCESSED_FILES['unwanted_dict'], 'rb') as f:
     unwanted = pickle.load(f)
 
-check = 'Q23846130'
+check = 'Q49231'
 
 print(check in unwanted['city'], check in unwanted['subdivision'])

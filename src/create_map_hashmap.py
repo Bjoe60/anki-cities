@@ -3,6 +3,7 @@ import pickle
 import time
 from json import JSONDecodeError
 from urllib.parse import unquote
+import os
 from SPARQLWrapper import SPARQLWrapper, JSON
 from file_paths import PROCESSED_FILES
 
@@ -172,7 +173,8 @@ SELECT DISTINCT ?item ?article ?depicts ?depictsLabel WHERE {
 """
 
 
-sparql = SPARQLWrapper("https://query.wikidata.org/sparql", agent='Bjoe1839/1.0 (bjorn60@gmail.com) bot')
+user_agent = os.getenv("WIKIDATA_USER_AGENT", "CitiesBot/1.0 (https://github.com/yourusername/anki-cities)")
+sparql = SPARQLWrapper("https://query.wikidata.org/sparql", agent=user_agent)
 
 
 def run_sparql_query_with_504_retries(query, max_retries=5, base_delay_seconds=2):
