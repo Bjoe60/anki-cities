@@ -21,8 +21,8 @@ def sort_cities_notes():
     try:
         # Load both CSV files
         df1_header = pd.read_csv(file1, sep='\t', header=None, nrows=6)
-        df1 = pd.read_csv(file1, sep='\t', header=None, skiprows=6)
-        df2 = pd.read_csv(file2, usecols=['wikidata_id', 'countryLabel', 'type', 'population'])
+        df1 = pd.read_csv(file1, sep='\t', header=None, skiprows=6, dtype='unicode')
+        df2 = pd.read_csv(file2, usecols=['wikidata_id', 'countryLabel', 'type', 'population'], dtype='unicode')
 
         # Extract the columns to use for merging and sorting
         key_column_file1 = df1.columns[3]
