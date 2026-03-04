@@ -1,4 +1,4 @@
-# cities-private
+# anki-cities
 
 Code for generating [Cities of Your Country](https://ankiweb.net/shared/info/48360581) for Anki.
 
