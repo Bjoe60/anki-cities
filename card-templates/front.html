@@ -1,0 +1,256 @@
+{{#Maps}}
+<div class="header">{{English}}</div>
+
+<div class="map-w-txt">
+	<!-- "tappable" is a class for AnkiDroid to ignore gestures -->
+	<div class="map-container map-w-pog tappable">
+		<div id="pog-guess" class="pog-outer">
+			<div class="pog-inner">
+				<svg xmlns="http://www.w3.org/2000/svg" version="1.0" width="18" height="18">
+					<defs>
+		  			<radialGradient id="Orange" cx="0.5" cy="0.5" r="0.5" fx="0.25" fy="0.25">
+							<stop offset="0%" stop-color="#FFFFFF"/>
+							<stop offset="50%" stop-color="#FFAA00"/>
+							<stop offset="75%" stop-color="#CC5500"/>
+							<stop offset="100%" stop-color="#000000"/>
+						</radialGradient>
+					</defs>
+					<circle r="6" cx="9" cy="9" fill="url(#Orange)"/>
+				</svg>
+			</div>
+		</div>
+		<div class="map"></div>
+	</div>
+	<div class="name-credit">
+		<div class="name"></div>
+		<div class="credit"></div>
+	</div>
+</div>
+
+<div>
+	<a id="out-btn" class="reroll button" onclick="prev_map();return false;" href="#">
+		<b> ← </b>
+	</a>
+	<a id="in-btn" class="reroll button" onclick="next_map();return false;" href="#">
+		<b> → </b>
+	</a>
+</div><br>
+
+<div id="map-data" style="display:none;">{{Maps}}</div>
+
+<p id="console"/>
+
+<script>
+try {
+
+	/* -------------------- CONFIG -------------------- */
+
+	var MAP_FIELDS = [
+		"image", "artist", "cc", "name",
+		"top", "bottom", "left", "right",
+		"xFormula", "yFormula"
+	];
+
+	var $map = document.querySelector('.map');
+	var $credit = document.querySelector('.credit');
+	var $name = document.querySelector('.name');
+	var $pog = document.querySelector('#pog-guess');
+	var $outBtn = document.querySelector('#out-btn');
+	var $inBtn = document.querySelector('#in-btn');
+	var $console = document.querySelector('#console');
+
+	/* -------------------- STATE -------------------- */
+
+	var rawMaps = document.getElementById('map-data').innerHTML.split(';;');
+	rawMaps.shift(); // remove coords
+	var maps = rawMaps.map(parseMap);
+
+	var state = {
+		mapIdx: 0,
+		guessLat: 0,
+		guessLong: 0
+	};
+
+	sessionStorage.setItem("guessLat", 0);
+	sessionStorage.setItem("guessLong", 0);
+	sessionStorage.setItem("guessX", 0);
+	sessionStorage.setItem("guessY", 0);
+
+	var len = maps.length;
+
+	if (len === 1) {
+		$outBtn.style.display = "none";
+		$inBtn.style.display = "none";
+	}
+
+	render();
+
+	/* -------------------- HELPERS -------------------- */
+
+	function parseMap(str) {
+		var values = str.split('|');
+		var obj = {};
+		MAP_FIELDS.forEach((field, i) => obj[field] = values[i] || "");
+		return obj;
+	}
+
+	// Avoid negative modulo result
+	function mod(n, m) {
+		return ((n % m) + m) % m;
+	}
+
+	function getLong(xPct, left, right) {
+		left = parseFloat(left);
+		right = parseFloat(right);
+		
+		var width = mod(right - left, 360);
+		if (width == 0) {
+			width = 360;
+		}
+
+		var distFromLeft = xPct * width / 100;
+		var long = mod(left + distFromLeft, 360);
+		if (long - left >= 180) {
+			long -= 360;
+		}
+		return long;
+	}
+
+	function getLat(yPct, top, bottom) {
+		top = parseFloat(top);
+		bottom = parseFloat(bottom);
+		return top - (yPct * (top - bottom) / 100);
+	}
+
+	function getX(long, left, right) {
+		left = parseFloat(left);
+		right = parseFloat(right);
+
+		var width = mod(right - left, 360);
+		if (width == 0) {
+			width = 360;
+		}
+		
+		var distFromLeft = mod(long - left, 360);
+		if (distFromLeft - width / 2 >= 180) {
+			distFromLeft = distFromLeft - 360;
+		}
+		return 100 * distFromLeft / width;
+	}
+
+	function getY(lat, top, bottom) {
+		top = parseFloat(top);
+		bottom = parseFloat(bottom);
+		return 100 * (top - lat) / (top - bottom);
+	}
+
+	// Used for maps like Japan, USA
+	function getCustom(lat, long, formula) {
+		// Unescape characters in formula
+		var doc = new DOMParser().parseFromString(formula, "text/html");
+		formula = doc.documentElement.textContent;
+
+		return eval(formula.replaceAll("$1", lat).replaceAll("$2", long));
+	}
+
+	function updatePog(x, y) {
+		$pog.style = `left:${x}%;top:${y}%;display:initial;`;
+	}
+
+	function hidePog() {
+		$pog.style = "display:none;";
+	}
+
+	/* -------------------- RENDER -------------------- */
+
+	function render() {
+		var map = maps[state.mapIdx];
+
+		$map.innerHTML = map.image;
+		$name.innerHTML = map.name;
+
+		$credit.innerHTML = map.artist
+			? decodeURIComponent(`<a href="${map.cc}">©</a> ${map.artist}`)
+			: '';
+
+		if (!state.guessLat) {
+			// Hide guess before clicked
+			hidePog();
+		} else {
+			// Calculate peg position on current map based on map type
+			var x, y;
+
+			if (map.top) {
+				// Map uses regular lat/long coordinates
+				x = getX(state.guessLong, map.left, map.right);
+				y = getY(state.guessLat, map.top, map.bottom);
+			} else {
+				// Map calculates coordinates using custom formulas
+				x = getCustom(state.guessLat, state.guessLong, map.xFormula);
+				y = getCustom(state.guessLat, state.guessLong, map.yFormula);
+			}
+
+			(0 <= x && x <= 100 && 0 <= y && y <= 100)
+				? updatePog(x, y)
+				: hidePog();
+		}
+
+		$outBtn.classList.toggle('disabled', state.mapIdx === 0);
+		$inBtn.classList.toggle('disabled', state.mapIdx === len - 1);
+
+		sessionStorage.setItem("mapIdx", state.mapIdx);
+	}
+
+	/* -------------------- INTERACTION -------------------- */
+
+	$('.map-w-pog').click(function (e) {
+		var xPct = (e.pageX - $(this).offset().left) / $(this).width() * 100;
+		var yPct = (e.pageY - $(this).offset().top) / $(this).height() * 100;
+
+		updatePog(xPct, yPct);
+
+		var map = maps[state.mapIdx];
+
+		if (map.top) {
+			state.guessLong = getLong(xPct, map.left, map.right);
+			state.guessLat = getLat(yPct, map.top, map.bottom);
+		} else {
+			state.guessLong = state.guessLat = 0;
+		}
+
+		sessionStorage.setItem("guessLong", state.guessLong);
+		sessionStorage.setItem("guessLat", state.guessLat);
+		sessionStorage.setItem("guessX", xPct);
+		sessionStorage.setItem("guessY", yPct);
+		sessionStorage.setItem("guessIdx", state.mapIdx);
+	});
+
+	window.next_map = function () {
+		if (state.mapIdx < len - 1) {
+			state.mapIdx++;
+			render();
+		}
+	};
+
+	window.prev_map = function () {
+		if (state.mapIdx > 0) {
+			state.mapIdx--;
+			render();
+		}
+	};
+
+	const element = document.getElementById('qa');
+	if (element.getAttribute('citieslistener') !== 'true') {
+		document.addEventListener('keydown', e => {
+			if (e.key === "ArrowRight") next_map();
+			if (e.key === "ArrowLeft") prev_map();
+		});
+		element.setAttribute('citieslistener', 'true');
+	}
+
+} catch (error) {
+	document.querySelector('#console').innerHTML = error;
+}
+</script>
+
+{{/Maps}}
