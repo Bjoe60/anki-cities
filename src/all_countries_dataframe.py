@@ -253,7 +253,7 @@ def is_valid_qid(qid):
 
 # Phase 1: Simplified city query - only gets direct subdivision (level 1), no nested chain.
 # The 6-level subdivision chain is resolved separately in batch queries (Phase 3).
-# Uses wdt:P131 (truthy/best-rank) instead of p:P131 with end-time filtering.
+# Uses p:P131/ps:P131 with end-time (P582) filtering to exclude historical subdivisions.
 CITY_QUERY = """
 SELECT DISTINCT
 (?city AS ?wikidata_id)
@@ -274,7 +274,7 @@ WHERE {
         wdt:P17 wd:%s ;
         wdt:P625 ?coords_ .
   %s
-  OPTIONAL { ?city wdt:P131 ?sd . }
+  OPTIONAL { ?city p:P131 ?sdStmt . ?sdStmt ps:P131 ?sd . OPTIONAL { ?sdStmt pq:P582 ?e } FILTER (!BOUND(?e)) .}
   OPTIONAL { ?city wdt:P1082 ?pop . }
   OPTIONAL { ?city wdt:P1566 ?gn . }
   OPTIONAL { ?city wdt:P1705 ?native . }
@@ -303,7 +303,10 @@ CITY_QUERY = ' '.join(line.strip().replace(' .', '.') for line in CITY_QUERY.spl
 PARENT_QUERY = """
 SELECT ?sd ?parent WHERE {
   VALUES ?sd { %s }
-  ?sd wdt:P131 ?parent .
+  ?sd p:P131 ?stmt .
+  ?stmt ps:P131 ?parent .
+  OPTIONAL { ?stmt pq:P582 ?e }
+  FILTER (!BOUND(?e))
 }
 """
 
@@ -692,10 +695,13 @@ def create_all_countries_dataframe():
 					sub_country_labels.append(unknown_label)
 
 			# Physicals2 from level-1 subdivisions (P706 of the subdivision)
+			# Skip subdivisions that are the country itself — country is the top-level layer
 			physicals2_uris = []
 			physical2_labels_list = []
 			for chain in chains:
 				sd0_qid = chain[0][0].replace(WD_PREFIX, '')
+				if sd0_qid == country_id:
+					continue
 				if sd0_qid in p706_map:
 					for phy_qid in p706_map[sd0_qid]:
 						uri = WD_PREFIX + phy_qid

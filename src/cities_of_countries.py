@@ -10,6 +10,7 @@ import time
 from urllib.parse import unquote
 from math import sin, cos, tan, pi, atan, log
 import pickle
+import subprocess
 from collections import Counter
 from file_paths import INPUT_FILES, PROCESSED_FILES, OUTPUT_FILES
 from urllib.parse import quote
@@ -28,13 +29,13 @@ DOWNLOAD_PAUSE_SECONDS = 2
 file_target = '/home/bjoe/.local/share/Anki2/Shared decks/collection.media/'
 
 query_url = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&maxlag=5&redirects&prop=redirects|imageinfo&iiprop=url|extmetadata&iiextmetadatafilter=Artist|LicenseUrl|AttributionRequired&iiurlwidth=1100&iiurlheight=680'
-query_url_low_res = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&maxlag=5&redirects&prop=redirects|imageinfo&iiprop=url|extmetadata&iiextmetadatafilter=Artist|LicenseUrl|AttributionRequired&iiurlwidth=800&iiurlheight=500'
+query_url_low_res = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&maxlag=5&redirects&prop=redirects|imageinfo&iiprop=url|extmetadata&iiextmetadatafilter=Artist|LicenseUrl|AttributionRequired&iiurlwidth=700&iiurlheight=440'
 query_url_wikipedia = 'https://en.wikipedia.org/w/api.php?action=query&format=json&maxlag=5&redirects&prop=redirects|imageinfo&iiprop=url|extmetadata&iiextmetadatafilter=Artist|LicenseUrl|AttributionRequired&iiurlwidth=1100&iiurlheight=680&titles='
 revision_url = 'https://en.wikipedia.org/w/api.php?action=query&format=json&maxlag=5&redirects&prop=revisions&rvprop=content&rvslots=main&titles=' # If needed add 'rvsection=0'
 country_img_base = 'Module:Location map/data/'
 wikipedia_base_url = 'https://en.wikipedia.org/wiki/'
 UNKNOWN_ENTITY = 'http://www.wikidata.org/entity/Q24238356'
-UNWANTED_MAPS = {'Argentina_Greater_Buenos_Aires_location_map.svg', 'Artsakh_administrative_map_2021.svg', 'Bangladesh_Bhola_District_adm_location_map.svg', 'Mongar_Bhutan_location_map.png', 'Trongsa_Bhutan_location_map.png', 'Trashigang_Bhutan_location_map.png', 'Thimphu_Bhutan_location_map.png', 'Punakha_Bhutan_location_map.png', 'Wangdue_Phodrang_Bhutan_location_map.png', 'Sarpang_Bhutan_location_map.png', 'Bumthang_Bhutan_location_map.png', 'Lower_Egypt_ancient_nomes_position_map.jpg', 'Mediterranean_Sea_location_map.svg', 'Location_map_Jabodetabek.png', 'Kepulauan_Selayar.png', 'Japan_location_map_with_Tokyo_Greater_Area_Inset.svg', 'Greater_Mexico_City.JPG', 'Raionul_Cantemir_location_map.jpg', 'Pacific_Ocean_laea_location_map.svg', 'North_Sea_location_map.svg', 'Al_Khor_localities.png', 'Umm_Salal_localities.png', 'Location_map_Ireland_County_Cavan.png', 'Southeast_Asia_location_map.svg', 'Open_street_map_central_london.svg', 'Location_map_San_Francisco_County.png', 'Location_Map_San_Francisco_Bay_Area.png', 'Location_map_Barcelona.png', 'Location_map_Seville.png', 'Raionul_Leova_location_map.jpg', 'Raionul_Ungheni_location_map.jpg', 'Antofagasta_Region_Relief.jpg', 'Gagauzia_map.jpg', 'Map_Concarneau.jpg', "Sana'a_Governorate_Map.png", 'Location_map_of_Penang_2023.svg', 'Location_map_Ethiopia_Tigray.png', 'Bangladesh_Patuakhali_District_adm_location_map.svg', 'Mesopotamia_location_map2.svg', 'Agean_non_political.jpg', 'Turkije_satelliet.jpg', 'Map_of_the_Black_Sea_with_bathymetry_and_surrounding_relief.svg', 'Africa_location_map.svg', 'Napa_County_California_Location_Map.png', 'Sonoma_County_California_Location_Map.png', 'Atlantic_Ocean_laea_location_map.svg', 'Krk_location_map.png', 'Location_of_the_province_Daniel_Alcides_Carrión_in_Pasco.svg', 'Bangladesh_Barguna_District_adm_location_map.svg', 'Venetian_lagoon_locator_map.svg', 'Gabon_Wouleu-Ntem_location.svg', 'Krapina-Zagorje_County_OpenStreetMap.svg', 'Seenu_atoll.png', 'Alpes-de-Haute-Provence.jpg', 'Australia_South_Australia_City_of_Adelaide_location_map.svg', 'Dimos_Skydras.png', 'KG-Batken-Leilek.svg', 'KG-CHU-Kemin.svg', 'KG-CHU-Sokuluk_N.svg', 'KG-CHU-Ysyk-Ata.svg', 'KG-Osh-Kara-Suu.svg', 'KG-Osh-Aravan.svg', 'KG-Jalal-Abad-Toktogul.svg', 'KG-Jalal-Abad-Aksy.svg', 'KG-Jalal-Abad-Nooken.svg', 'Qikiqtaaluk_locator_map_2021.svg', 'Samtse_Bhutan_location_map.png', 'Pemagatshel_Bhutan_location_map.png', 'Chukha_Bhutan_location_map.png', 'Egypt_Nile_Delta_location_map.svg', 'Relief_Map_of_Siberian_Federal_District.jpg', 'Panfilovmap800000.svg', 'Europe_blank_laea_location_map.svg', 'West_Asia_non_political_with_water_system.jpg', 'Languedoc-Roussillon-Loc.png', 'Location_map_Denmark_Funen.png', 'KG-Osh-Alay.svg', 'British_Isles.svg', 'Israel_outline_jezreel.png', 'Qatar_Doha_location_map.svg', 'Island_of_Ireland_location_map.svg', 'Baltic_states_location_map.svg', 'Caribbean_location_map.svg', 'European_Russia_location_map_(2014–2022,_Crimea_disputed).svg', "Location_map_Indonesia_Bird's_Head_Peninsular.png", 'Topological_map_of_Neu_Guinea.png', 'Timor.png', 'Balkans_relief_location_map.jpg', 'Iberian_Peninsula_location_map.svg', 'Location_map_Ryukyu_Islands.png', 'South_Asia_non_political,_with_rivers.jpg', 'Central_Europe_location_map.svg', 'West_Bank_location_map.svg', 'Asia_laea_location_map.svg', 'Pyrenees_map_shaded_relief-fr.svg', 'Micronesia_regions_map.png', 'Levant_adm_location_map.svg', 'USA_Hawaii_island_chain_location_map.svg', 'Middle_East_location_map.svg', 'Scandinavia_location_map.svg', 'Golan_Heights_relief_v2.png', 'Locaation_map_Denmark_Zealand.png', 'Map-of-Komárom-Esztergom.svg', 'Map-of-Győr-Moson-Sopron.svg', 'Neckar_watershed_closer.gif', 'Europe_EU_laea_location_map.svg', 'Location_map_Balikpapan.png', 'Rhine_watershed_closer.gif', 'South_America_laea_location_map.svg'}
+UNWANTED_MAPS = {'Argentina_Greater_Buenos_Aires_location_map.svg', 'Artsakh_administrative_map_2021.svg', 'Bangladesh_Bhola_District_adm_location_map.svg', 'Mongar_Bhutan_location_map.png', 'Trongsa_Bhutan_location_map.png', 'Trashigang_Bhutan_location_map.png', 'Thimphu_Bhutan_location_map.png', 'Punakha_Bhutan_location_map.png', 'Wangdue_Phodrang_Bhutan_location_map.png', 'Sarpang_Bhutan_location_map.png', 'Bumthang_Bhutan_location_map.png', 'Lower_Egypt_ancient_nomes_position_map.jpg', 'Mediterranean_Sea_location_map.svg', 'Location_map_Jabodetabek.png', 'Kepulauan_Selayar.png', 'Japan_location_map_with_Tokyo_Greater_Area_Inset.svg', 'Greater_Mexico_City.JPG', 'Raionul_Cantemir_location_map.jpg', 'Pacific_Ocean_laea_location_map.svg', 'North_Sea_location_map.svg', 'Al_Khor_localities.png', 'Umm_Salal_localities.png', 'Location_map_Ireland_County_Cavan.png', 'Southeast_Asia_location_map.svg', 'Open_street_map_central_london.svg', 'Location_map_San_Francisco_County.png', 'Location_Map_San_Francisco_Bay_Area.png', 'Location_map_Barcelona.png', 'Location_map_Seville.png', 'Raionul_Leova_location_map.jpg', 'Raionul_Ungheni_location_map.jpg', 'Antofagasta_Region_Relief.jpg', 'Gagauzia_map.jpg', 'Map_Concarneau.jpg', "Sana'a_Governorate_Map.png", 'Location_map_of_Penang_2023.svg', 'Location_map_Ethiopia_Tigray.png', 'Bangladesh_Patuakhali_District_adm_location_map.svg', 'Mesopotamia_location_map2.svg', 'Agean_non_political.jpg', 'Turkije_satelliet.jpg', 'Map_of_the_Black_Sea_with_bathymetry_and_surrounding_relief.svg', 'Africa_location_map.svg', 'Napa_County_California_Location_Map.png', 'Sonoma_County_California_Location_Map.png', 'Atlantic_Ocean_laea_location_map.svg', 'Krk_location_map.png', 'Location_of_the_province_Daniel_Alcides_Carrión_in_Pasco.svg', 'Bangladesh_Barguna_District_adm_location_map.svg', 'Venetian_lagoon_locator_map.svg', 'Gabon_Wouleu-Ntem_location.svg', 'Krapina-Zagorje_County_OpenStreetMap.svg', 'Seenu_atoll.png', 'Alpes-de-Haute-Provence.jpg', 'Australia_South_Australia_City_of_Adelaide_location_map.svg', 'Dimos_Skydras.png', 'KG-Batken-Leilek.svg', 'KG-CHU-Kemin.svg', 'KG-CHU-Sokuluk_N.svg', 'KG-CHU-Ysyk-Ata.svg', 'KG-Osh-Kara-Suu.svg', 'KG-Osh-Aravan.svg', 'KG-Jalal-Abad-Toktogul.svg', 'KG-Jalal-Abad-Aksy.svg', 'KG-Jalal-Abad-Nooken.svg', 'Qikiqtaaluk_locator_map_2021.svg', 'Samtse_Bhutan_location_map.png', 'Pemagatshel_Bhutan_location_map.png', 'Chukha_Bhutan_location_map.png', 'Egypt_Nile_Delta_location_map.svg', 'Relief_Map_of_Siberian_Federal_District.jpg', 'Panfilovmap800000.svg', 'Europe_blank_laea_location_map.svg', 'West_Asia_non_political_with_water_system.jpg', 'Languedoc-Roussillon-Loc.png', 'Location_map_Denmark_Funen.png', 'KG-Osh-Alay.svg', 'British_Isles.svg', 'Israel_outline_jezreel.png', 'Qatar_Doha_location_map.svg', 'Island_of_Ireland_location_map.svg', 'Baltic_states_location_map.svg', 'Caribbean_location_map.svg', 'European_Russia_location_map_(2014–2022,_Crimea_disputed).svg', "Location_map_Indonesia_Bird's_Head_Peninsular.png", 'Topological_map_of_Neu_Guinea.png', 'Timor.png', 'Balkans_relief_location_map.jpg', 'Iberian_Peninsula_location_map.svg', 'Location_map_Ryukyu_Islands.png', 'South_Asia_non_political,_with_rivers.jpg', 'Central_Europe_location_map.svg', 'West_Bank_location_map.svg', 'Asia_laea_location_map.svg', 'Pyrenees_map_shaded_relief-fr.svg', 'Micronesia_regions_map.png', 'Levant_adm_location_map.svg', 'USA_Hawaii_island_chain_location_map.svg', 'Middle_East_location_map.svg', 'Scandinavia_location_map.svg', 'Golan_Heights_relief_v2.png', 'Locaation_map_Denmark_Zealand.png', 'Map-of-Komárom-Esztergom.svg', 'Map-of-Győr-Moson-Sopron.svg', 'Neckar_watershed_closer.gif', 'Europe_EU_laea_location_map.svg', 'Location_map_Balikpapan.png', 'Rhine_watershed_closer.gif', 'South_America_laea_location_map.svg', 'Indian_Ocean_laea_location_map.svg', 'Ushu_Province.png', 'Al_Daayen_localities.png', 'KG-CHU-CHU.svg', 'Location_map_San_Francisco_County_2.svg', 'Iraq_Kurdistan_location_map.svg'}
 # ONLY_ONE_MAP = {'0480_Woodlands_County,_Alberta,_Detailed.svg', 'Greece_(ancient)_IonianIslands_(cropped).svg', 'Indonesia_Kulon_Progo_Regency_location_map.svg', 'Location_map_Guadalcanal.png', '2_Regional_District_of_Fraser-Fort_George_British_Columbia.svg', 'Indonesia_Kebumen_Regency_location_map.svg', 'Indonesia_Majalengka_Regency_location_map.svg', 'Outline_Map_of_Central_Russia.svg', 'Location_map_of_Gloucester_County,_New_Jersey.svg', '0226_Mountain_View_County,_Alberta,_Detailed.svg', '3_Regional_District_of_Kitimat-Stikine_British_Columbia.svg', '0340_County_Of_Warner_No_5,_Alberta,_Detailed.svg', '4_Regional_District_of_Mount_Waddington_British_Columbia.svg', 'Indonesia_Sidoarjo_Regency_location_map.svg', 'Location_map_of_Mercer_County,_New_Jersey.svg', 'Wallis-et-Futuna_collectivity_location_map.svg', '0191_Kneehill_County,_Alberta,_Detailed.svg', 'Location_map_of_Brown_County,_Indiana.svg', 'Kabupaten_Tanah_Laut_Location_Map.svg', 'Norway_Troms_og_Finnmark_adm_location_map.svg', 'Luxembourg_Diekirch_location_map.svg', 'Outline_Map_of_Altai_Republic.svg', 'Indonesia_Bojonegoro_Regency_location_map.svg', 'United_States_Virgin_Islands_Saint_Croix_location_map.svg', 'Belo_Horizonte_location_map.svg', '0012_Athabasca_County,_Alberta,_Detailed.svg', '0049_Camrose_County,_Alberta,_Detailed.svg', 'Isle_of_Skye_UK_location_map.svg', 'USA_Mid-Atlantic_location_map.svg', 'Easter_Island_location_map.svg', '0015_County_Of_Barrhead_No_11,_Alberta,_Detailed.svg', '0053_Cardston_County,_Alberta,_Detailed.svg', '4353_Lac_La_Biche_County,_Alberta,_Detailed.svg', '20_Qathet_Regional_District_British_Columbia.svg', 'Haliburton_locator_map_2021.svg', 'Indonesia_Bogor_Regency_location_map.svg', 'Csongrad_location_map.svg', 'India_Dadra_and_Nagar_Haveli_location_map.svg', 'Indonesia_Karanganyar_Regency_location_map.svg', 'Nouvelle-Calédonie_collectivity_location_map_centered.svg', '0290_Municipal_District_Of_Spirit_River_No_133,_Alberta,_Detailed.svg', '0346_Westlock_County,_Alberta,_Detailed.svg', 'West_Bank_location_map.svg', '21_Squamish-Lillooet_Regional_District_British_Columbia.svg', 'Indonesia_Badung_Regency_location_map.svg', 'Philippines_location_map_(Visayas).svg', 'Location_map_of_Salem_County,_New_Jersey.svg', 'Kelbajar_Rayon.PNG', 'Indonesia_Kalimantan_location_map.svg', '0361_Municipality_Of_Crowsnest_Pass,_Alberta,_Detailed.svg', '0349_Wheatland_County,_Alberta,_Detailed.svg', '23_Regional_District_of_Bulkley-Nechako_British_Columbia.svg', '0036_Municipal_District_Of_Bonnyville_No_87,_Alberta,_Detailed.svg', 'Locator_map_AZO_TER.svg', 'Al_Wakrah_localities.png', 'Outline_Map_of_Volga_Federal_District.svg', '0312_Municipal_District_Of_Taber,_Alberta,_Detailed.svg', '10_Cariboo_Regional_District_British_Columbia.svg', 'USA_District_of_Columbia_location_map.svg', '0020_Beaver_County,_Alberta,_Detailed.svg', 'Duck_Lake_No._463_Coloured_Map.svg', 'Indonesia_Banyuwangi_Regency_location_map.svg', 'Shetland_UK_location_map.svg', '8_Sunshine_Coast_Regional_District_British_Columbia.svg', '28_Northern_Rockies_Regional_Municipality_British_Columbia.svg', 'Seychelles_location_map.svg', 'Location_map_Pomurska.png', 'Kurily.svg', 'Saint-Martin_collectivity_location_map.svg', 'Bantayan_island_group.png', '0506_Big_Lakes_County,_Alberta,_Detailed.svg', 'Sula_Islands_Locator_Topography.png', 'Argentina_Tierra_del_Fuego_and_Staten_Island_location_map.svg', '7_North_Coast_Regional_District_British_Columbia.svg', '22_Strathcona_Regional_District_British_Columbia.svg', 'Levant_adm_location_map.svg', 'Locator_map_Azores_Pico.png', 'Outer_Hebrides_UK_location_map.svg', 'Relief_Map_of_Northwestern_Federal_District.jpg', 'Tahiti_location_map.png', 'Turks_and_Caicos_Islands_location_map.svg', 'Australia_Victoria_Queenscliffe_Borough_location_map.svg', 'Indonesia_Purworejo_Regency_location_map.svg', 'Norway_Viken_adm_location_map.svg', 'Canada_Vancouver_Island_location_map.svg'}
 imgs_dic = {}
 pushpin_imgs = set()
@@ -156,6 +157,14 @@ def process_cities_and_maps(df, map_dict):
 
 	df['maps'] = np.nan # Initialize new column
 	df['maps'] = df['maps'].astype(object)
+	df['phys_map_names'] = np.nan
+	df['phys_map_names'] = df['phys_map_names'].astype(object)
+	df['phys2_map_names'] = np.nan
+	df['phys2_map_names'] = df['phys2_map_names'].astype(object)
+	df['phys_tag_by_map'] = np.nan
+	df['phys_tag_by_map'] = df['phys_tag_by_map'].astype(object)
+	df['subdiv_map_names'] = np.nan
+	df['subdiv_map_names'] = df['subdiv_map_names'].astype(object)
 
 	for idx in df.index:
 		country = country_label = None
@@ -166,6 +175,10 @@ def process_cities_and_maps(df, map_dict):
 		row = df.loc[idx]
 		country = row['country']
 		country_label = row['countryLabel']
+		phys_tag_by_map = {}          # map_name -> label, deferred until size check
+		phys_map_names_for_row = set()   # physicals (city P706) — added even without reference
+		phys2_map_names_for_row = set()  # physicals2 (subdivision P706) — only added if reference confirms
+		subdiv_maps_for_row = set()      # level-1 subdivision map names (size-check reference)
 
 		# Cache physicals and other columns
 		physicals = row['physicals']
@@ -188,13 +201,37 @@ def process_cities_and_maps(df, map_dict):
 		subdivisions_country.append(country)
 		subdivisions_country_label.append(country_label)
 		if pd.notnull(physicals):
-			subdivisions_country.extend(physicals.split('|'))
-			physical_labels = [p for p in physical_labels.split('|') if not _Q_ID_FULL_RE.match(p)]
-			subdivisions_country_label.extend(physical_labels)
+			p_uris = physicals.split('|')
+			p_lbls = [p for p in physical_labels.split('|') if not _Q_ID_FULL_RE.match(p)] if pd.notnull(physical_labels) else []
+			subdivisions_country.extend(p_uris)
+			for i, p_uri in enumerate(p_uris):
+				p_lbl = p_lbls[i] if i < len(p_lbls) else ''
+				p_map = map_dict.get(p_uri, '').replace(wikipedia_base_url, '').replace('_', ' ')
+				if p_map:
+					phys_tag_by_map[p_map] = p_lbl  # Deferred: size-checked before adding tag
+					phys_map_names_for_row.add(p_map)
+				elif p_lbl:
+					subdivisions_country_label.append(p_lbl)  # No map → add tag directly
 		if pd.notnull(physicals2):
-			subdivisions_country.extend(physicals2.split('|'))
+			p2_uris = physicals2.split('|')
+			p2_lbls = physical2_labels.split('|') if pd.notnull(physical2_labels) else []
+			for i, p_uri in enumerate(p2_uris):
+				subdivisions_country.append(p_uri)
+				p_lbl = p2_lbls[i] if i < len(p2_lbls) else ''
+				p_map = map_dict.get(p_uri, '').replace(wikipedia_base_url, '').replace('_', ' ')
+				if p_map:
+					phys2_map_names_for_row.add(p_map)
+					if p_lbl and p_map not in phys_tag_by_map:
+						phys_tag_by_map[p_map] = p_lbl
 		if pd.notnull(partofs):
 			subdivisions_country.extend(partofs.split('|'))
+
+		# Build level-1 subdivision map names (reference for physical size check)
+		for sub_uri in subdivisions_data[0][0].split('|'):
+			if sub_uri in map_dict:
+				s_map = map_dict[sub_uri].replace(wikipedia_base_url, '').replace('_', ' ')
+				if s_map:
+					subdiv_maps_for_row.add(s_map)
 
 		# Create tags
 		for i in range(len(sub_country_labels)):
@@ -242,11 +279,15 @@ def process_cities_and_maps(df, map_dict):
 										 if not any(st != other and st in other
 													  for other in subdivisions_country_label)}
 		tags.update(f"cities::{tag.replace(' ', '-').replace(',', '')}" for tag in simplified_subdivision_tags)
-		tags.add('cities::version-2026-03-04')
+		tags.add('cities::version-2026-03-05')
 
 		# Update dataframe
 		df.at[idx, 'maps'] = maps
 		df.at[idx, 'tags'] = ' '.join(tags)
+		df.at[idx, 'phys_map_names'] = phys_map_names_for_row
+		df.at[idx, 'phys2_map_names'] = phys2_map_names_for_row
+		df.at[idx, 'phys_tag_by_map'] = phys_tag_by_map
+		df.at[idx, 'subdiv_map_names'] = subdiv_maps_for_row
 
 		# Just for the total count
 		total_tags.update(tags)
@@ -319,6 +360,19 @@ def insert_correct_pushpin_maps(df, imgs_dic):
 		maps = row['maps']
 		coords = row['coords']
 
+		# Load per-row physical size-check data
+		phys_map_names = row['phys_map_names']
+		phys2_map_names = row['phys2_map_names']
+		phys_tag_by_map_row = row['phys_tag_by_map']
+		subdiv_map_names_row = row['subdiv_map_names']
+		if not isinstance(phys_map_names, set): phys_map_names = set()
+		if not isinstance(phys2_map_names, set): phys2_map_names = set()
+		if not isinstance(phys_tag_by_map_row, dict): phys_tag_by_map_row = {}
+		if not isinstance(subdiv_map_names_row, set): subdiv_map_names_row = set()
+		valid_subdiv_maps = [m for m in subdiv_map_names_row if m in imgs_dic]
+		all_phys_map_names = phys_map_names | phys2_map_names
+		valid_phys_tags = []
+
 		# Extract long_lat using the compiled regex
 		match = point_regex.search(coords)
 		if match:
@@ -345,13 +399,34 @@ def insert_correct_pushpin_maps(df, imgs_dic):
 			if img_data['img'] in UNWANTED_MAPS:
 				continue
 
+			# Size check for physical feature maps
+			# is_map_bigger(long_lat, m1, m2) returns 1 if m1 is larger (more zoomed out) than m2.
+			# If any subdivision map is larger than the physical map, the physical lies
+			# *within* that subdivision (inverted P706 on Wikidata) → skip both map and tag.
+			# physicals2 (subdivision P706): skip entirely if no reference map available.
+			if map_name in all_phys_map_names:
+				is_phys2 = map_name in phys2_map_names
+				if valid_subdiv_maps:
+					if any(is_map_bigger(long_lat, s_map, map_name, imgs_dic) == 1
+							for s_map in valid_subdiv_maps if s_map in imgs_dic):
+						continue
+				elif is_phys2:
+					# physicals2 with no reference map to verify — skip to be safe
+					continue
+				# Physical passes check: queue tag if this map has a label
+				if map_name in phys_tag_by_map_row:
+					p_lbl = phys_tag_by_map_row[map_name]
+					if p_lbl and not p_lbl.endswith('unknown'):
+						valid_phys_tags.append(
+							f"cities::{row['countryLabel']}::{p_lbl}".replace(' ', '-').replace(',', '')
+						)
 
 			# Get pin location
 			pin_loc = get_pin_loc(long_lat, img_data)
 			if not pin_loc:
 				continue
 
-			if pushpin_imgs_count[map_name] <= 5:
+			if pushpin_imgs_count[map_name] <= 5: # Low res if used in 5 or fewer cards
 				low_res_imgs.add(img_data['img'])
 			else:
 				normal_imgs.add(img_data['img'])
@@ -375,6 +450,10 @@ def insert_correct_pushpin_maps(df, imgs_dic):
 			rows_to_drop.append(idx)
 			continue
 
+		# Add valid physical tags (size-checked above)
+		if valid_phys_tags:
+			df.at[idx, 'tags'] = df.at[idx, 'tags'] + ' ' + ' '.join(set(valid_phys_tags))
+
 		# Prepend coordinates
 		new_maps.insert(0, f'{long_lat[0]} {long_lat[1]}')
 
@@ -397,7 +476,7 @@ def get_usernames_and_update_html(df, normal_imgs, low_res_imgs):
 	normal_imgs_file = ['File:' + img for img in normal_imgs]
 	low_res_imgs_file = ['File:' + img for img in low_res_imgs]
 
-	print((len(normal_imgs_file)), 'images')
+	print((len(normal_imgs_file) + len(low_res_imgs_file)), 'images')
 	print()
 	replacements = {}
 	for (imgs, q_url) in [(normal_imgs_file, query_url), (low_res_imgs_file, query_url_low_res)]:
@@ -447,12 +526,42 @@ def get_usernames_and_update_html(df, normal_imgs, low_res_imgs):
 
 	return df, all_urls
 
+def _get_png_optimizer():
+	"""Return the first available lossless PNG optimizer command, or None."""
+	for cmd in ['oxipng', 'optipng']:
+		try:
+			subprocess.run([cmd, '--version'], capture_output=True, check=True)
+			return cmd
+		except (FileNotFoundError, subprocess.CalledProcessError):
+			pass
+	return None
+
+_PNG_OPTIMIZER = _get_png_optimizer()
+
+def _optimize_png(path):
+	"""Run lossless PNG re-compression in-place if an optimizer is available."""
+	if _PNG_OPTIMIZER is None or not path.endswith('.png'):
+		return
+	try:
+		if _PNG_OPTIMIZER == 'oxipng':
+			subprocess.run(['oxipng', '-o', '4', '--strip', 'safe', '--quiet', path],
+						   capture_output=True)
+		else:  # optipng
+			subprocess.run(['optipng', '-o4', '-quiet', path], capture_output=True)
+	except Exception as e:
+		print(f'Warning: PNG optimization failed for {path}: {e}')
+
 def download_images(all_urls):
 	print('\n' + '-'*30, 'Downloading images', '-'*30)
+	if _PNG_OPTIMIZER:
+		print(f'PNG optimizer: {_PNG_OPTIMIZER}')
+	else:
+		print('No PNG optimizer found (install oxipng or optipng to reduce file size)')
 	request_count = 0
 	for url in all_urls:
 		title = get_file_name(url)
-		if not os.path.isfile(file_target + title): # If not already downloaded
+		dest = file_target + title
+		if not os.path.isfile(dest): # If not already downloaded
 			r = session.get(url) # img.png
 			request_count += 1
 
@@ -470,8 +579,9 @@ def download_images(all_urls):
 				continue
 
 			print(title)
-			with open(file_target + title, "wb") as f:
+			with open(dest, "wb") as f:
 				f.write(r.content)
+			_optimize_png(dest)
 
 def finalize_dataframe_and_save(df, total_tags):
 	print("total tags:", len(total_tags))
