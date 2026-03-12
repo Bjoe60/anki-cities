@@ -30,7 +30,7 @@ LIMIT  10000
 OFFSET  """
 
 
-user_agent = os.getenv("WIKIDATA_USER_AGENT", "CitiesBot/1.0 (https://github.com/yourusername/anki-cities)")
+user_agent = os.getenv("WIKIDATA_USER_AGENT", "CitiesBot/1.0 (https://github.com/Bjoe60/anki-cities)")
 sparql = SPARQLWrapper("https://query.wikidata.org/sparql", agent=user_agent)
 
 def create_dbpedia_dataframe():
