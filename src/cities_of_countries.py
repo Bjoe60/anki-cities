@@ -9,6 +9,8 @@ import os
 import time
 from urllib.parse import unquote
 from math import sin, cos, tan, pi, atan, log
+
+_js_math = {'ln': 'Math.log', 'pi': 'Math.PI', 'sin': 'Math.sin', 'cos': 'Math.cos', 'atan': 'Math.atan', 'tan': 'Math.tan'}
 import pickle
 import subprocess
 from collections import Counter
@@ -435,9 +437,8 @@ def insert_correct_pushpin_maps(df, imgs_dic):
 			if map_name not in js_xy_cache:
 				_new_xy = {}
 				for x_y in ['x', 'y']:
-					_new_xy[x_y] = img_data[x_y].replace('^', '**').replace('ln', 'Math.log').replace('pi', 'Math.PI') \
-						.replace('sin', 'Math.sin').replace('cos', 'Math.cos') \
-						.replace('atan', 'Math.atan').replace('tan', 'Math.tan')
+					_new_xy[x_y] = re.sub(r'\b(ln|pi|sin|cos|atan|tan)\b', lambda m: _js_math[m.group(1)],
+						img_data[x_y].replace('^', '**'))
 				js_xy_cache[map_name] = _new_xy
 			new_xy = js_xy_cache[map_name]
 
