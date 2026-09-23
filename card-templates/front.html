@@ -62,7 +62,7 @@ try {
 	/* -------------------- STATE -------------------- */
 
 	var rawMaps = document.getElementById('map-data').innerHTML.split(';;');
-	rawMaps.shift(); // remove coords
+	var startCoords = rawMaps.shift().split(' ').map(parseFloat); // [long, lat]
 	var maps = rawMaps.map(parseMap);
 
 	var state = {
@@ -154,6 +154,29 @@ try {
 		return eval(formula.replaceAll("$1", lat).replaceAll("$2", long));
 	}
 
+	// Inverse of getCustom: find lat/long that lands on (x, y) using Newton's method
+	// with a numerically estimated Jacobian. Returns [0, 0] (no guess) if it doesn't converge.
+	function getCustomInverse(x, y, map) {
+		var lat = startCoords[1] || 0, long = startCoords[0] || 0, h = 1e-4;
+		var f = function (la, lo) {
+			return [getCustom(la, lo, map.xFormula), getCustom(la, lo, map.yFormula)];
+		};
+		for (var i = 0; i < 50; i++) {
+			var p = f(lat, long);
+			var dx = p[0] - x, dy = p[1] - y;
+			if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return [lat, long];
+			var pLat = f(lat + h, long), pLong = f(lat, long + h);
+			var a = (pLat[0] - p[0]) / h, b = (pLong[0] - p[0]) / h;
+			var c = (pLat[1] - p[1]) / h, d = (pLong[1] - p[1]) / h;
+			var det = a * d - b * c;
+			if (!isFinite(det) || det === 0) return [0, 0];
+			lat = Math.max(-89.9, Math.min(89.9, lat - (d * dx - b * dy) / det));
+			long = ((long - (a * dy - c * dx) / det + 540) % 360) - 180;
+			if (!isFinite(lat) || !isFinite(long)) return [0, 0];
+		}
+		return [0, 0];
+	}
+
 	function updatePog(x, y) {
 		$pog.style = `left:${x}%;top:${y}%;display:initial;`;
 	}
@@ -216,7 +239,7 @@ try {
 			state.guessLong = getLong(xPct, map.left, map.right);
 			state.guessLat = getLat(yPct, map.top, map.bottom);
 		} else {
-			state.guessLong = state.guessLat = 0;
+			[state.guessLat, state.guessLong] = getCustomInverse(xPct, yPct, map);
 		}
 
 		sessionStorage.setItem("guessLong", state.guessLong);
